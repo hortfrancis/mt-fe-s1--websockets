@@ -1,26 +1,65 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AudioInput, Message } from "./components";
 
 export default function App() {
 
     const [conversation, setConversation] = useState([]);
+    const socketConnection = useRef(null);
 
     function addMessageToConversation(messageObject) {
         setConversation((prev) => [...prev, messageObject]);
     }
 
+    // NEW!
     useEffect(() => {
-        console.log(import.meta.env.VITE_BACKEND_URL);
-        // Make a generic request to the backend to wake up the server
-        (async () => {
-            try {
-                const response = await fetch(import.meta.env.VITE_BACKEND_URL + '/');
-                if (response.status === 200) console.log("Server is available!");
-            } catch (error) {
-                console.error("Error checking server availability:", error);
+        console.log('WebSocket URL', import.meta.env.VITE_BACKEND_WS_URL);
+
+        socketConnection.current = new WebSocket(import.meta.env.VITE_BACKEND_WS_URL);
+
+        socketConnection.current.onopen = () => {
+            console.log("WebSocket connection opened.");
+        }
+
+        socketConnection.current.onmessage = (event) => {
+            console.log("Received message from server via socket connection:", event.data);
+            // More response handling probably here... 
+        }
+
+        socketConnection.current.onerror = (error) => {
+            console.error("WebSocket connection error:", error);
+        }
+
+        socketConnection.current.onclose = () => {
+            console.log("WebSocket connection closed.");
+        }
+
+        return () => {
+            // Close the WebSocket connection when the component unmounts
+            if (socketConnection.current) {
+                socketConnection.current.close();
             }
-        })();
+        }
     }, []);
+
+    function testWebSocketConnection() {
+        if (socketConnection.current) {
+            socketConnection.current.send("Testing WebSocket connection...");
+        }
+    }
+
+    // OLD! 
+    // useEffect(() => {
+    //     console.log(import.meta.env.VITE_BACKEND_URL);
+    //     // Make a generic request to the backend to wake up the server
+    //     (async () => {
+    //         try {
+    //             const response = await fetch(import.meta.env.VITE_BACKEND_URL + '/');
+    //             if (response.status === 200) console.log("Server is available!");
+    //         } catch (error) {
+    //             console.error("Error checking server availability:", error);
+    //         }
+    //     })();
+    // }, []);
 
     function base64ToBlob(base64, type) {
         const binaryString = window.atob(base64);
@@ -68,15 +107,6 @@ export default function App() {
                 audio: URL.createObjectURL(base64ToBlob(data.modelAudio, 'audio/mpeg'))
             };
 
-            // const modelMessage = {
-            //     role: "assistant",
-            //     message: `${data.modelTranscription.gpt_response_english} <br>
-            //     ${data.modelTranscription.gpt_response} <br>
-            //     ${data.modelTranscription.gpt_response_breakdown}<br>
-            //     ${data.modelTranscription.suggestions}`,
-            //     audio: URL.createObjectURL(base64ToBlob(data.modelAudio, 'audio/mpeg'))
-            // };
-
             addMessageToConversation(userMessage);
             addMessageToConversation(modelMessage);
 
@@ -88,9 +118,7 @@ export default function App() {
     return (
         <main className="m-10 flex flex-col items-center gap-10">
 
-            <h1>Mother Tongue</h1>
-            <h2>Instructions</h2>
-            <p>Imagine you are speaking to your Gujarati grandmother. Start by saying "kemcho", which means "How are you?". If you need help with how to say something, simply ask a question in English. Have fun!</p>
+        <button onClick={testWebSocketConnection} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Test WebSocket connection</button>
 
             {conversation
                 .filter((item) => item.role !== "system") // Exclude 'system' messages
