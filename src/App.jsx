@@ -5,6 +5,10 @@ export default function App() {
 
     const [conversation, setConversation] = useState([]);
     const socketConnection = useRef(null);
+    const expectBinary = useRef(false);
+
+    // For prototyping purposes
+    const [audioUrl, setAudioUrl] = useState(null);
 
     function addMessageToConversation(messageObject) {
         setConversation((prev) => [...prev, messageObject]);
@@ -21,6 +25,33 @@ export default function App() {
         }
 
         socketConnection.current.onmessage = (event) => {
+    
+            if (expectBinary.current) {
+                console.log('expecting binary data');
+
+                // Fleshing this out in the next commit 
+
+                // console.log('expecting binary data');
+                // // Handle binary data
+                // const audioBlob = new Blob([event.data], { type: "audio/mpeg" });
+                // const audioUrl = URL.createObjectURL(audioBlob);
+                // setAudioUrl(audioUrl);
+                // expectBinary.current = false;
+                // return;
+            } else {
+                // Handle text data as JSON
+                console.log("expecting text data");
+                try {
+                    console.log("Received text data:", JSON.parse(event.data));
+                    // Add the returned data to the conversation array 
+                    if (JSON.parse(event.data).mode !== 'audio') console.log('we think its audio data');
+
+                } catch (error) {
+                    console.error("Error parsing JSON data:", error);
+                }
+            }
+
+
             console.log("Received message from server via socket connection:", event.data);
             // More response handling probably here... 
         }
@@ -135,6 +166,8 @@ export default function App() {
         <main className="m-10 flex flex-col items-center gap-10">
 
             <button onClick={testWebSocketConnection} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Test WebSocket connection</button>
+
+            {audioUrl && <audio src={audioUrl} controls></audio>}
 
             {conversation
                 .filter((item) => item.role !== "system") // Exclude 'system' messages
