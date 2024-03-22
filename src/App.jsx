@@ -1,92 +1,110 @@
 import { useState, useEffect, useRef } from "react";
+import useTextWebSocket from "./hooks/useTextWebSocket";
 import { AudioInput, Message } from "./components";
 
 export default function App() {
 
     const [conversation, setConversation] = useState([]);
     const socketConnection = useRef(null);
-    const expectBinary = useRef(false);
+    // const expectBinary = useRef(false);
 
     // For prototyping purposes
     const [audioUrl, setAudioUrl] = useState(null);
 
-    function addMessageToConversation(messageObject) {
-        setConversation((prev) => [...prev, messageObject]);
+    // function addMessageToConversation(messageObject) {
+    //     setConversation((prev) => [...prev, messageObject]);
+    // }
+
+    const sendTextMessage = useTextWebSocket(
+        import.meta.env.VITE_BACKEND_TEXT_WS_URL,
+        (reply) => {
+            console.log("Reply from server:", reply);
+        }
+    );
+
+    function testTextSocketConnection() {
+        sendTextMessage({ message: "Testing WebSocket connection..." });
     }
 
-
-    // NEW!
     useEffect(() => {
-        console.log('WebSocket URL', import.meta.env.VITE_BACKEND_WS_URL);
+        console.log('Text WebSocket URL', import.meta.env.VITE_BACKEND_TEXT_WS_URL);
+        console.log('Audio WebSocket URL', import.meta.env.VITE_BACKEND_AUDIO_WS_URL);
 
-        socketConnection.current = new WebSocket(import.meta.env.VITE_BACKEND_WS_URL);
-
-        socketConnection.current.onopen = () => {
-            console.log("WebSocket connection opened.");
-        }
-
-        socketConnection.current.onmessage = (event) => {
-
-            console.log('event.data', event.data);
-
-            if (expectBinary.current === false &&
-                JSON.parse(event.data).mode === 'audio') {
-                console.log('Switching to receive-audio mode');
-                expectBinary.current = true;
-                return;
-            }
-
-            if (expectBinary.current) {
-                console.log('expecting binary data');
-
-                // Fleshing this out in the next commit 
-
-                // console.log('expecting binary data');
-                // Handle binary data
-                const audioBlob = new Blob([event.data], { type: "audio/mpeg" });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                setAudioUrl(audioUrl);
-                // expectBinary.current = false;
-                return;
-            } else {
-                // Handle text data as JSON
-                console.log("expecting text data");
-                try {
-                    console.log("Received text data:", JSON.parse(event.data));
-                    // Add the returned data to the conversation array 
-                    if (JSON.parse(event.data).mode !== 'audio') console.log('we think its audio data');
-
-                } catch (error) {
-                    console.error("Error parsing JSON data:", error);
-                }
-            }
-
-
-            console.log("Received message from server via socket connection:", event.data);
-            // More response handling probably here... 
-        }
-
-        socketConnection.current.onerror = (error) => {
-            console.error("WebSocket connection error:", error);
-        }
-
-        socketConnection.current.onclose = () => {
-            console.log("WebSocket connection closed.");
-        }
-
-        return () => {
-            // Close the WebSocket connection when the component unmounts
-            if (socketConnection.current) {
-                socketConnection.current.close();
-            }
-        }
+        sendTextMessage({ message: "Hello from the frontend!" });
     }, []);
 
-    function testWebSocketConnection() {
-        if (socketConnection.current) {
-            socketConnection.current.send(JSON.stringify({ message: "Testing WebSocket connection..." }));
-        }
-    }
+    // NEW!
+    // useEffect(() => {
+
+
+    //     sendTextMessage({ message: "Hello from the frontend!" });
+
+    // socketConnection.current.onopen = () => {
+    //     console.log("WebSocket connection opened.");
+    // }
+
+    // socketConnection.current.onmessage = (event) => {
+
+    //     // console.log('event.data', event.data);
+
+    //     // if (expectBinary.current === false &&
+    //     //     JSON.parse(event.data).mode === 'audio') {
+    //     //     console.log('Switching to receive-audio mode');
+    //     //     expectBinary.current = true;
+    //     //     return;
+    //     // }
+
+    //     // if (expectBinary.current) {
+    //     //     console.log('expecting binary data');
+
+    //     //     // Fleshing this out in the next commit 
+
+    //     //     // console.log('expecting binary data');
+    //     //     // Handle binary data
+    //     //     const audioBlob = new Blob([event.data], { type: "audio/mpeg" });
+    //     //     const audioUrl = URL.createObjectURL(audioBlob);
+    //     //     setAudioUrl(audioUrl);
+    //     //     // expectBinary.current = false;
+    //     //     return;
+    //     // } else {
+    //     //     // Handle text data as JSON
+    //     //     console.log("expecting text data");
+    //     //     try {
+    //     //         console.log("Received text data:", JSON.parse(event.data));
+    //     //         // Add the returned data to the conversation array 
+    //     //         if (JSON.parse(event.data).mode !== 'audio') console.log('we think its audio data');
+
+    //     //     } catch (error) {
+    //     //         console.error("Error parsing JSON data:", error);
+    //     //     }
+    // }
+
+
+    //     console.log("Received message from server via socket connection:", event.data);
+    //     // More response handling probably here... 
+    // }
+
+    // socketConnection.current.onerror = (error) => {
+    //     console.error("WebSocket connection error:", error);
+    // }
+
+    // socketConnection.current.onclose = () => {
+    //     console.log("WebSocket connection closed.");
+    // }
+
+    // return () => {
+    //     // Close the WebSocket connection when the component unmounts
+    //     if (socketConnection.current) {
+    //         socketConnection.current.close();
+    //     }
+    // }
+    // }, []);
+
+    // function testWebSocketConnection() {
+    //     if (socketConnection.current) {
+    //         socketConnection.current.send(JSON.stringify({ message: "Testing WebSocket connection..." }));
+    //     }
+    // }
 
     // OLD! 
     // useEffect(() => {
@@ -102,15 +120,15 @@ export default function App() {
     //     })();
     // }, []);
 
-    function base64ToBlob(base64, type) {
-        const binaryString = window.atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return new Blob([bytes], { type });
-    }
+    // function base64ToBlob(base64, type) {
+    //     const binaryString = window.atob(base64);
+    //     const len = binaryString.length;
+    //     const bytes = new Uint8Array(len);
+    //     for (let i = 0; i < len; i++) {
+    //         bytes[i] = binaryString.charCodeAt(i);
+    //     }
+    //     return new Blob([bytes], { type });
+    // }
 
     // NEW!
     async function sendAudioToServer(audioChunks) {
@@ -175,7 +193,10 @@ export default function App() {
     return (
         <main className="m-10 flex flex-col items-center gap-10">
 
-            <button onClick={testWebSocketConnection} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Test WebSocket connection</button>
+            <button onClick={testTextSocketConnection} className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded">
+                Test <span className="font-bold text-blue-900 uppercase bg-slate-50 rounded mx-2 p-1"> text </span>
+                socket connection
+            </button>
 
             {audioUrl && <audio src={audioUrl} autoPlay controls></audio>}
 
