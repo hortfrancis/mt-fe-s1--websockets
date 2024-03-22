@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import useTextWebSocket from "./hooks/useTextWebSocket";
+import useAudioWebSocket from "./hooks/useAudioWebSocket";
 import { AudioInput, Message } from "./components";
 
 export default function App() {
@@ -9,11 +10,18 @@ export default function App() {
     // const expectBinary = useRef(false);
 
     // For prototyping purposes
-    const [audioUrl, setAudioUrl] = useState(null);
+    // const [audioUrl, setAudioUrl] = useState(null);
 
     // function addMessageToConversation(messageObject) {
     //     setConversation((prev) => [...prev, messageObject]);
     // }
+
+    useEffect(() => {
+        console.log('Text WebSocket URL', import.meta.env.VITE_BACKEND_TEXT_WS_URL);
+        console.log('Audio WebSocket URL', import.meta.env.VITE_BACKEND_AUDIO_WS_URL);
+
+        sendTextMessage({ message: "Hello from the frontend!" });
+    }, []);
 
     const sendTextMessage = useTextWebSocket(
         import.meta.env.VITE_BACKEND_TEXT_WS_URL,
@@ -23,15 +31,15 @@ export default function App() {
     );
 
     function testTextSocketConnection() {
-        sendTextMessage({ message: "Testing WebSocket connection..." });
+        sendTextMessage({ message: "Testing WebSocket connection: hello from the frontend!" });
     }
 
-    useEffect(() => {
-        console.log('Text WebSocket URL', import.meta.env.VITE_BACKEND_TEXT_WS_URL);
-        console.log('Audio WebSocket URL', import.meta.env.VITE_BACKEND_AUDIO_WS_URL);
+    const streamAudio = useAudioWebSocket(import.meta.env.VITE_BACKEND_AUDIO_WS_URL, (message) => {
+        console.log("Received message:", message);
+        // Handle any messages from the server here
+    });
 
-        sendTextMessage({ message: "Hello from the frontend!" });
-    }, []);
+
 
     // NEW!
     // useEffect(() => {
@@ -131,19 +139,19 @@ export default function App() {
     // }
 
     // NEW!
-    async function sendAudioToServer(audioChunks) {
-        const audioBlob = new Blob(audioChunks, { type: "audio/flac" });
-        const arrayBuffer = await audioBlob.arrayBuffer();
+    // async function sendAudioToServer(audioChunks) {
+    //     const audioBlob = new Blob(audioChunks, { type: "audio/flac" });
+    //     const arrayBuffer = await audioBlob.arrayBuffer();
 
-        if (socketConnection.current && socketConnection.current.readyState === WebSocket.OPEN) {
-            console.log("Sending audio to server via WebSocket...");
-            // Switch to audio mode then send the binary audio data
-            socketConnection.current.send(JSON.stringify({ mode: "audio" }));
-            socketConnection.current.send(arrayBuffer);
-        } else {
-            console.error("WebSocket connection not open.");
-        }
-    }
+    //     if (socketConnection.current && socketConnection.current.readyState === WebSocket.OPEN) {
+    //         console.log("Sending audio to server via WebSocket...");
+    //         // Switch to audio mode then send the binary audio data
+    //         socketConnection.current.send(JSON.stringify({ mode: "audio" }));
+    //         socketConnection.current.send(arrayBuffer);
+    //     } else {
+    //         console.error("WebSocket connection not open.");
+    //     }
+    // }
 
     // OLD!
     // async function sendAudioToServer(audioChunks) {
@@ -198,7 +206,7 @@ export default function App() {
                 socket connection
             </button>
 
-            {audioUrl && <audio src={audioUrl} autoPlay controls></audio>}
+            {/* {audioUrl && <audio src={audioUrl} autoPlay controls></audio>} */}
 
             {conversation
                 .filter((item) => item.role !== "system") // Exclude 'system' messages
@@ -206,7 +214,7 @@ export default function App() {
                     <Message key={index} data={item} />
                 ))}
 
-            <AudioInput sendAudioToServer={sendAudioToServer} />
+            <AudioInput streamAudio={streamAudio} />
         </main>
     );
 }
