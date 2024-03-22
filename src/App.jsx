@@ -43,7 +43,7 @@ export default function App() {
 
     function testWebSocketConnection() {
         if (socketConnection.current) {
-            socketConnection.current.send("Testing WebSocket connection...");
+            socketConnection.current.send(JSON.stringify({ message: "Testing WebSocket connection..." }));
         }
     }
 
@@ -78,6 +78,8 @@ export default function App() {
 
         if (socketConnection.current && socketConnection.current.readyState === WebSocket.OPEN) {
             console.log("Sending audio to server via WebSocket...");
+            // Switch to audio mode then send the binary audio data
+            socketConnection.current.send(JSON.stringify({ type: "audio" }));
             socketConnection.current.send(arrayBuffer);
         } else {
             console.error("WebSocket connection not open.");
