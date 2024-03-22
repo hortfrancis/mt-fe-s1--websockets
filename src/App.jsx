@@ -14,6 +14,7 @@ export default function App() {
         setConversation((prev) => [...prev, messageObject]);
     }
 
+
     // NEW!
     useEffect(() => {
         console.log('WebSocket URL', import.meta.env.VITE_BACKEND_WS_URL);
@@ -25,19 +26,28 @@ export default function App() {
         }
 
         socketConnection.current.onmessage = (event) => {
-    
+
+            console.log('event.data', event.data);
+
+            if (expectBinary.current === false &&
+                JSON.parse(event.data).mode === 'audio') {
+                console.log('Switching to receive-audio mode');
+                expectBinary.current = true;
+                return;
+            }
+
             if (expectBinary.current) {
                 console.log('expecting binary data');
 
                 // Fleshing this out in the next commit 
 
                 // console.log('expecting binary data');
-                // // Handle binary data
-                // const audioBlob = new Blob([event.data], { type: "audio/mpeg" });
-                // const audioUrl = URL.createObjectURL(audioBlob);
-                // setAudioUrl(audioUrl);
+                // Handle binary data
+                const audioBlob = new Blob([event.data], { type: "audio/mpeg" });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                setAudioUrl(audioUrl);
                 // expectBinary.current = false;
-                // return;
+                return;
             } else {
                 // Handle text data as JSON
                 console.log("expecting text data");
@@ -110,7 +120,7 @@ export default function App() {
         if (socketConnection.current && socketConnection.current.readyState === WebSocket.OPEN) {
             console.log("Sending audio to server via WebSocket...");
             // Switch to audio mode then send the binary audio data
-            socketConnection.current.send(JSON.stringify({ type: "audio" }));
+            socketConnection.current.send(JSON.stringify({ mode: "audio" }));
             socketConnection.current.send(arrayBuffer);
         } else {
             console.error("WebSocket connection not open.");
@@ -167,7 +177,7 @@ export default function App() {
 
             <button onClick={testWebSocketConnection} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Test WebSocket connection</button>
 
-            {audioUrl && <audio src={audioUrl} controls></audio>}
+            {audioUrl && <audio src={audioUrl} autoPlay controls></audio>}
 
             {conversation
                 .filter((item) => item.role !== "system") // Exclude 'system' messages
