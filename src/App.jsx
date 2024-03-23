@@ -2,11 +2,24 @@ import { useState, useEffect, useRef } from "react";
 import useTextWebSocket from "./hooks/useTextWebSocket";
 import useAudioWebSocket from "./hooks/useAudioWebSocket";
 import { AudioInput, Message } from "./components";
+import { v4 as uuidv4 } from 'uuid';
 
 export default function App() {
 
     const [conversation, setConversation] = useState([]);
     const socketConnection = useRef(null);
+    const [sessionId, setSessionId] = useState('');
+
+
+    // Test state variables
+    const [var1, setVar1] = useState(false);
+    const [var2, setVar2] = useState('default');
+    const [var3, setVar3] = useState(0);
+
+    const [transcribedAudio, setTranscribedAudio] = useState(null);
+
+    // const [testVar, setTestVar] = useState(false);
+    // const [testVar2, setTestVar2] = useState('default');
     // const expectBinary = useRef(false);
 
     // For prototyping purposes
@@ -16,27 +29,61 @@ export default function App() {
     //     setConversation((prev) => [...prev, messageObject]);
     // }
 
-    useEffect(() => {
-        console.log('Text WebSocket URL', import.meta.env.VITE_BACKEND_TEXT_WS_URL);
-        console.log('Audio WebSocket URL', import.meta.env.VITE_BACKEND_AUDIO_WS_URL);
 
-        sendTextMessage({ message: "Hello from the frontend!" });
+
+    useEffect(() => {
+        console.log('Text WebSocket URL', import.meta.env.VITE_BACKEND_TEXT_WS_URL);  // Debugging
+        console.log('Audio WebSocket URL', import.meta.env.VITE_BACKEND_AUDIO_WS_URL);  // Debugging
+
+        const sessionId = uuidv4();
+        console.log('Session ID:', sessionId);
+        setSessionId(sessionId);
+
+        sendTextMessage({ message: "Hello from the frontend!" });  // Debugging
+        sendTextMessage({ message: {
+            type: 'system',
+            task: 'establish-session',
+            content: {
+                sessionId: sessionId
+            }
+        }})
     }, []);
 
     const sendTextMessage = useTextWebSocket(
         import.meta.env.VITE_BACKEND_TEXT_WS_URL,
         (reply) => {
             console.log("Reply from server:", reply);
+
+            if (reply.message.type === 'system') {
+                console.log('System message received:', reply.message.content);
+
+                if (reply.message.content.testVar2) {
+                    setTestVar2(reply.message.content.testVar2);
+                }
+
+                // setTestVar(reply.message.content.testVar);
+            }
+
+
         }
     );
 
     function testTextSocketConnection() {
         sendTextMessage({ message: "Testing WebSocket connection: hello from the frontend!" });
+        sendTextMessage({ message: {
+            type: 'system',
+            task: 'establish-session',
+            content: {
+                sessionId: sessionId
+            }
+        }})
     }
 
     const streamAudio = useAudioWebSocket(import.meta.env.VITE_BACKEND_AUDIO_WS_URL, (message) => {
         console.log("Received message:", message);
         // Handle any messages from the server here
+
+        setTranscribedAudio(message);
     });
 
 
@@ -200,6 +247,20 @@ export default function App() {
 
     return (
         <main className="m-10 flex flex-col items-center gap-10">
+
+            <div className="flex flex-col space-y-2">
+                <div className="bg-blue-100 p-4 rounded shadow">
+                    <p>Variable 1: {var1}</p>
+                </div>
+                <div className="bg-green-100 p-4 rounded shadow">
+                    <p>Variable 2: {var2}</p>
+                </div>
+                <div className="bg-red-100 p-4 rounded shadow">
+                    <p>Variable 3: {var3}</p>
+                </div>
+            </div>
+
+            <span>Transcribed audio: {transcribedAudio}</span>
 
             <button onClick={testTextSocketConnection} className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded">
                 Test <span className="font-bold text-blue-900 uppercase bg-slate-50 rounded mx-2 p-1"> text </span>
